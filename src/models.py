@@ -22,8 +22,6 @@ from keras.applications.vgg16 import VGG16
 from keras.applications.inception_v3 import InceptionV3
 
 
-
-
 # Cyclical learning rates 
 def triangular2(epoch):
     base_lr = .0005
@@ -49,9 +47,9 @@ def conv_bn_dp(x, filters, dropout):
     return d
 
 
-def conv_6L(im_size, learning_rate = .001, dropout = .1, num_output=2):
+def conv_6L(learning_rate = .001, dropout = .1, num_output=2):
     model = Sequential()
-    model.add(Conv2D(16, (3, 3), padding='same', input_shape=(int(im_size), int(im_size), 3), kernel_initializer='he_normal'))
+    model.add(Conv2D(16, (3, 3), padding='same', input_shape=(512, 512, 3), kernel_initializer='he_normal'))
     model.add(keras.layers.normalization.BatchNormalization())
     model.add(Activation('relu'))
     model.add(Dropout(dropout))
@@ -98,15 +96,15 @@ def conv_6L(im_size, learning_rate = .001, dropout = .1, num_output=2):
     model.compile(loss="categorical_crossentropy", optimizer=Adam, metrics=['accuracy'])
     return model
 
-def vgg16_ft(im_size, learning_rate=.001, dropout = .1, num_output=2):
+def vgg16_ft(learning_rate=.001, dropout = .1, num_output=2):
     # same freatures as include_top=False
     try:
-        vgg16 = VGG16(weights='imagenet')
+        vgg16 = VGG16(weights='imagenet', include_top=False,  input_shape = (512, 512, 3))
     except:
         vgg16  = load_model('project/rbbidart/models/vgg16')
     x=vgg16.get_layer('block5_pool').output
     
-    x = Flatten(input_shape=(7, 7, 512))(x) # last conv layer outputs 7x7x512
+    x = Flatten(input_shape=(16, 16, 512))(x) # last conv layer outputs 7x7x512
     x = Dense(4096, kernel_initializer='glorot_uniform')(x)
     x = keras.layers.normalization.BatchNormalization()(x)
     x = Activation('relu')(x)
@@ -130,23 +128,28 @@ def vgg16_ft(im_size, learning_rate=.001, dropout = .1, num_output=2):
     model.compile(loss="categorical_crossentropy", optimizer=Adam, metrics=['accuracy'])
     return model
 
-def vgg16_gpool_ft(im_size, learning_rate=.001, dropout = .1, num_output=2):
+
+# FC1 doesn't downsample, so cna be used with normal 224 sized VVG
+def vgg16_fc1(learning_rate=.001, dropout = .1, num_output=2):
     # same freatures as include_top=False
     try:
-        vgg16 = VGG16(weights='imagenet')
+        vgg16 = VGG16(weights='imagenet', include_top=False)
     except:
         vgg16  = load_model('project/rbbidart/models/vgg16')
     x=vgg16.get_layer('block5_pool').output
-    
-    x = GlobalAveragePooling2D(input_shape=(7, 7, 512))(x)
-    x = Flatten()(x) # last conv layer outputs 7x7x512
-    x = Dense(1024, kernel_initializer='glorot_uniform')(x)
-    x = keras.layers.normalization.BatchNormalization()(x)
-    x = Activation('relu')(x)
-    x = Dropout(0.5)(x)
-    
-    x = Dense(num_output, kernel_initializer='glorot_uniform')(x)
-    x = keras.layers.normalization.BatchNormalization()(x)
+
+    x = Conv2D(256, (3, 3), activation='relu', padding='same', input_shape=(16, 16, 512))(x)
+    x = Dropout(0.1)(x)
+    x = BatchNormalization()(x)
+
+    x = Conv2D(128, (3, 3), activation='relu', padding='same')(x)
+    x = Dropout(0.1)(x)
+    x = BatchNormalization()(x)
+
+    x = Conv2D(num_output, (3, 3), activation='relu', padding='same')(x)
+    x = BatchNormalization()(x)
+
+    x = GlobalAveragePooling2D()(x)
     pred = Activation('softmax')(x)
     
     model = Model(outputs = pred, inputs = vgg16.input)
@@ -158,6 +161,79 @@ def vgg16_gpool_ft(im_size, learning_rate=.001, dropout = .1, num_output=2):
     model.compile(loss="categorical_crossentropy", optimizer=Adam, metrics=['accuracy'])
     return model
 
+def vgg16_fc1b(learning_rate=.001, dropout = .1, num_output=2):
+    # same freatures as include_top=False
+    try:
+        vgg16 = VGG16(weights='imagenet', include_top=False)
+    except:
+        vgg16  = load_model('project/rbbidart/models/vgg16')
+    x=vgg16.get_layer('block5_pool').output
+
+    x = Conv2D(256, (3, 3), activation='relu', padding='same', input_shape=(16, 16, 512))(x)
+    x = Dropout(0.1)(x)
+    x = BatchNormalization()(x)
+
+    x = Conv2D(128, (3, 3), activation='relu', padding='same')(x)
+    x = Dropout(0.1)(x)
+    x = BatchNormalization()(x)
+
+    x = GlobalAveragePooling2D()(x)
+    x = Dense(num_output, activation = 'softmax')(x)
+    pred = Activation('softmax')(x)
+    
+    model = Model(outputs = pred, inputs = vgg16.input)
+    
+    for layer in model.layers[:19]: # only train fc layers. 
+        layer.trainable = False
+
+    Adam = keras.optimizers.Adam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
+    model.compile(loss="categorical_crossentropy", optimizer=Adam, metrics=['accuracy'])
+    return model
+
+
+def vgg16_fc2(learning_rate=.001, dropout = .1, num_output=2):
+    # same freatures as include_top=False
+    try:
+        vgg16 = VGG16(weights='imagenet', include_top=False)
+    except:
+        vgg16  = load_model('project/rbbidart/models/vgg16')
+    x=vgg16.get_layer('block5_pool').output
+
+    x = Conv2D(256, (3, 3), activation='relu', padding='same')(x)
+    x = Dropout(0.1)(x)
+    x = BatchNormalization()(x)
+    x = MaxPooling2D(pool_size=(2, 2))(x)
+
+    x = Conv2D(256, (3, 3), activation='relu', padding='same')(x)
+    x = Dropout(0.1)(x)
+    x = BatchNormalization()(x)
+    x = MaxPooling2D(pool_size=(2, 2))(x)
+
+    x = Conv2D(128, (3, 3), activation='relu', padding='same')(x)
+    x = Dropout(0.1)(x)
+    x = BatchNormalization()(x)
+    x = MaxPooling2D(pool_size=(2, 2))(x)
+
+    x = Conv2D(num_output, (3, 3), activation='relu', padding='same')(x)
+    x = BatchNormalization()(x)
+
+    x = GlobalAveragePooling2D()(x)
+    pred = Activation('softmax')(x)
+    
+    model = Model(outputs = pred, inputs = vgg16.input)
+    
+    for layer in model.layers[:19]: # only train fc layers. 
+        layer.trainable = False
+
+    Adam = keras.optimizers.Adam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
+    model.compile(loss="categorical_crossentropy", optimizer=Adam, metrics=['accuracy'])
+    return model
+
+
+
+
+
+############### wierd models:
 
 def conv_6L_CSD(im_size, learning_rate = .01, dropout = .1):
 

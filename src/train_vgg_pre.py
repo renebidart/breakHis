@@ -17,22 +17,10 @@ def main(data_loc, out_loc, epochs, batch_size, model_str, magnification, num_ou
     from keras.preprocessing.image import ImageDataGenerator
     from keras.applications.vgg16 import VGG16 , preprocess_input
 
-    # def preprocess(x):
-    #     x /= 255.
-    #     x -= 0.5
-    #     x *= 2.
-    #     # 'RGB'->'BGR'
-    #     x = x[..., ::-1]
-    #     # Zero-center by mean pixel
-    #     x[..., 0] -= 103.939
-    #     x[..., 1] -= 116.779
-    #     x[..., 2] -= 123.68
-    #     return x
-
     # Get the function:
     functionList = {
     'conv_6L': conv_6L,
-    'vgg16_ft': vgg16_ft,
+    'vgg16_1': vgg16_1,
     'vgg16_fc1': vgg16_fc1,
     'vgg16_fc1b': vgg16_fc1b,
     'vgg16_fc2': vgg16_fc2

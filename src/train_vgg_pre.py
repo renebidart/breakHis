@@ -1,7 +1,7 @@
 from models import*
 import sys
 
-def main(data_loc, out_loc, epochs, batch_size, model_str, magnification, num_output):
+def main(data_loc, out_loc, epochs, batch_size, model_str, magnification, num_output, img_dim=224):
     import os
     import glob
     import random
@@ -15,11 +15,11 @@ def main(data_loc, out_loc, epochs, batch_size, model_str, magnification, num_ou
     from keras.layers.core import Activation, Dense, Lambda
     from keras.callbacks import ModelCheckpoint, EarlyStopping
     from keras.preprocessing.image import ImageDataGenerator
-    from keras.applications.vgg16 import VGG16 , preprocess_input
+    from keras.applications.vgg16 import VGG16, preprocess_input
+
 
     # Get the function:
     functionList = {
-    'conv_6L': conv_6L,
     'vgg16_1': vgg16_1,
     'vgg16_fc1': vgg16_fc1,
     'vgg16_fc1b': vgg16_fc1b,
@@ -29,14 +29,18 @@ def main(data_loc, out_loc, epochs, batch_size, model_str, magnification, num_ou
     parameters = {
     'learning_rate': .01,
     'dropout': .1,
-    'num_output' : int(num_output)
+    'num_output' : int(num_output),
+    'img_dim' : int(img_dim)
     }
 
     # Params for all models
     epochs=int(epochs)
     batch_size=int(batch_size)   # make this divisible by len(x_data)
+    img_dim=int(img_dim)
 
     # Locations
+    if not os.path.exists(out_loc):
+        os.makedirs(out_loc)
     train_loc = os.path.join(str(data_loc), str(magnification), 'train')
     valid_loc = os.path.join(str(data_loc), str(magnification), 'valid')
     num_train = len(glob.glob(train_loc + '/**/*.png', recursive=True))
@@ -71,7 +75,7 @@ def main(data_loc, out_loc, epochs, batch_size, model_str, magnification, num_ou
 
     generator = datagen.flow_from_directory(
             train_loc,
-            target_size=(512, 512), # (704, 448),
+            target_size=(img_dim, img_dim), # (704, 448),
             batch_size=batch_size,
             class_mode='categorical')
 
@@ -80,7 +84,7 @@ def main(data_loc, out_loc, epochs, batch_size, model_str, magnification, num_ou
 
     valid_generator = valid_datagen.flow_from_directory(
             valid_loc,
-            target_size=(512, 512),
+            target_size=(img_dim, img_dim),
             batch_size=batch_size,
             class_mode='categorical')
 

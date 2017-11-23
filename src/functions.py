@@ -8,6 +8,7 @@ from PIL import Image
 from shutil import copyfile
 import matplotlib.pyplot as plt 
 from matplotlib.pyplot import imshow
+from IPython.core.display import display
 
 
 def cv_features(model_2, model_8, base_data_dir):

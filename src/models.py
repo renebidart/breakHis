@@ -112,7 +112,7 @@ def global_average_pooling_shape(input_shape):
 
 def VGG16_convolutions():
     model = Sequential()
-    model.add(ZeroPadding2D((1,1),input_shape=(3,None,None)))
+    model.add(ZeroPadding2D((1,1),input_shape=(None,None, 3)))
     model.add(Conv2D(64, (3, 3), activation='relu', name='conv1_1'))
     model.add(ZeroPadding2D((1, 1)))
     model.add(Conv2D(64, (3, 3), activation='relu', name='conv1_2'))
@@ -148,10 +148,10 @@ def VGG16_convolutions():
     model.add(Conv2D(512, (3, 3), activation='relu', name='conv5_3'))
     return model
 
-def get_vgg_var_sz(learning_rate=.001, dropout = .1, num_output=2, img_dim=512):
+def get_vgg_var_sz(weights_path, learning_rate=.001, dropout = .1, num_output=2, img_dim=512):
     model = VGG16_convolutions()
 
-    model = load_model_weights(model, "vgg16_weights.h5")
+    model = load_model_weights(model, weights_path)
     
     model.add(Lambda(global_average_pooling, 
               output_shape=global_average_pooling_shape))
@@ -161,7 +161,7 @@ def get_vgg_var_sz(learning_rate=.001, dropout = .1, num_output=2, img_dim=512):
     return model
 
 def load_model_weights(model, weights_path):
-    print 'Loading model.'
+    print('Loading model.')
     f = h5py.File(weights_path)
     for k in range(f.attrs['nb_layers']):
         if k >= len(model.layers):
@@ -172,7 +172,7 @@ def load_model_weights(model, weights_path):
         model.layers[k].set_weights(weights)
         model.layers[k].trainable = False
     f.close()
-    print 'Model loaded.'
+    print('Model loaded.')
     return model
 
 def get_output_layer(model, layer_name):
@@ -182,33 +182,7 @@ def get_output_layer(model, layer_name):
     return layer
 
 
-# def vgg16_fc1_variable(learning_rate=.001, dropout = .1, num_output=2, img_dim=512):
-#     vgg16 = VGG_16_notop()
-
-#     x=vgg16.get_layer(-1).output
-
-#     x = Conv2D(256, (3, 3), activation='relu', padding='same', input_shape=(int(img_dim/32), int(img_dim/32), 512))(x)
-#     x = Dropout(0.1)(x)
-#     x = BatchNormalization()(x)
-
-#     x = Conv2D(128, (3, 3), activation='relu', padding='same')(x)
-#     x = Dropout(0.1)(x)
-#     x = BatchNormalization()(x)
-
-#     x = Conv2D(num_output, (3, 3), activation='relu', padding='same')(x)
-#     x = BatchNormalization()(x)
-
-#     x = GlobalAveragePooling2D()(x)
-#     pred = Activation('softmax')(x)
-    
-#     model = Model(outputs = pred, inputs = vgg16.input)
-    
-#     for layer in model.layers[:19]: # only train fc layers. 
-#         layer.trainable = False
-
-#     Adam = keras.optimizers.Adam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
-#     model.compile(loss="categorical_crossentropy", optimizer=Adam, metrics=['accuracy'])
-#     return model
+#################################
 
 
 

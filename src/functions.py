@@ -10,6 +10,9 @@ import matplotlib.pyplot as plt
 from matplotlib.pyplot import imshow
 from IPython.core.display import display
 
+from keras.models import Model
+
+
 
 def cv_features(model_2, model_8, base_data_dir):
     import itertools
@@ -141,8 +144,6 @@ def cv_features(model_2, model_8, base_data_dir):
     plt.show()
 
 
-
-
 def get_freatures_vgg(generator, loc, samples=8, classes=8, batch_size=1):
     num_imgs = sum([len(files) for r, d, files in os.walk(loc)])
     num_samples = samples*num_imgs
@@ -168,23 +169,19 @@ def get_freatures_vgg(generator, loc, samples=8, classes=8, batch_size=1):
     return all_features
 
 
-# ?
-# def get_freatures_incp3(generator, loc, samples=8, classes=8, batch_size=32):
-#     num_imgs = sum([len(files) for r, d, files in os.walk(loc)])
-#     num_samples = samples*num_imgs
+def get_freatures_incp3(model, loc, classes=8, image_shape = (512, 512)):
+    all_imgs = glob.glob(loc+'/**/*.png', recursive=True)
+    num_samples = len(all_imgs)
 
-#     from keras.applications.inception_v3 import InceptionV3
-#     base_model = InceptionV3(weights='imagenet', include_top=False)
-#     x = base_model.output
-#     features = GlobalAveragePooling2D()(x)
-#     model = Model(outputs=features, inputs=base_model.input)
+    conv_model = Model(inputs=model.input, outputs=model.get_layer(index=311).output)
+    all_features = np.zeros((num_samples, 2048))
+    features_names = []
 
+    for i, image_loc in enumerate(all_imgs):
+        image = Image.open(image_loc)
+        image = np.array(image.resize(image_shape))
+        features = conv_model.predict(np.expand_dims(image, axis=0))
 
-#     all_features = np.zeros((num_samples, 2048+classes))
-
-#     for i in range(0, num_samples, batch_size):
-#         x, y = next(generator)
-#         features = model.predict(x)
-#         all_features[i:i+len(y), 0:classes] = y
-#         all_features[i:i+len(features), classes:] = features
-#     return all_features
+        features_names.append(image_loc.rsplit('/')[-1])
+        all_features[i, :] = features
+    return features_names, all_features
